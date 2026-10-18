@@ -76,3 +76,7 @@ src/storage/    IndexedDB, validation, migration, import/export JSON
 src/state/      historique annuler / rétablir
 src/components/ interface (canevas, tiroirs, modales)
 ```
+
+## Application Android
+
+Voir [README-ANDROID.md](README-ANDROID.md) : APK compilé par GitHub Actions, signature, développement local.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0 — Application Android
+
+- Conteneur Android (Capacitor 8) : identifiant `com.structuralengineeringlabs.arpentis`, APK/AAB compilés par GitHub Actions (`.github/workflows/android.yml`).
+- GNSS : plugin natif de géolocalisation sur Android (demande de permission explicite, messages d'erreur adaptés), API navigateur inchangée sur le web.
+- Exports (DXF, CSV, GeoJSON, KML, sauvegardes JSON) : écriture dans le cache puis feuille de partage Android.
+- Fiche de relevé : impression / PDF via le gestionnaire d'impression Android (plugin `NativePrint`).
+- Bouton « retour » : ferme d'abord fenêtres et tiroirs, puis met l'application en arrière-plan.
+- Aucune permission INTERNET, sauvegarde cloud Android désactivée : les données restent sur l'appareil.
+- Build web inchangé ; `npm run build:android` produit la version embarquée (sans service worker).
+
 ## 2.1.0 — gestes, clavier, exports
 
 **Canevas**

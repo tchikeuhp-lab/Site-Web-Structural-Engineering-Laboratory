@@ -1,6 +1,10 @@
 /**
- * Utilitaires de téléchargement / partage de fichiers (100 % côté navigateur).
+ * Utilitaires de téléchargement / partage de fichiers (100 % local).
+ * Sur Android (Capacitor), le fichier est écrit dans le cache de l'application puis proposé via la
+ * feuille de partage système (Enregistrer dans Drive, Fichiers, WhatsApp, e-mail…) : le téléchargement
+ * par lien `<a download>` n'est pas fiable dans une WebView.
  */
+import { isNative } from '../platform/platform';
 
 /** Nom de fichier sûr : on garde les accents, on retire uniquement les caractères interdits. */
 export function safeFileName(title: string, fallback = 'releve'): string {
@@ -15,7 +19,41 @@ export function safeFileName(title: string, fallback = 'releve'): string {
   return cleaned || fallback;
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error('Lecture du fichier impossible'));
+    reader.onload = () => {
+      const result = String(reader.result ?? '');
+      resolve(result.slice(result.indexOf(',') + 1));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Android : écrit le fichier puis ouvre la feuille de partage. Retourne false si l'utilisateur annule. */
+async function shareNativeFile(blob: Blob, fileName: string, meta?: { title?: string; text?: string }): Promise<boolean> {
+  const [{ Filesystem, Directory }, { Share }] = await Promise.all([import('@capacitor/filesystem'), import('@capacitor/share')]);
+  const data = await blobToBase64(blob);
+  const written = await Filesystem.writeFile({ path: fileName, data, directory: Directory.Cache, recursive: true });
+  try {
+    await Share.share({ title: meta?.title ?? fileName, text: meta?.text, url: written.uri, dialogTitle: 'Enregistrer ou partager' });
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/cancel/i.test(msg)) return false;
+    throw err;
+  }
+}
+
 export function triggerDownload(blob: Blob, fileName: string): void {
+  if (isNative()) {
+    shareNativeFile(blob, fileName).catch((err) => {
+      console.error('Arpentis — partage impossible', err);
+      alert('Export impossible : ' + (err instanceof Error ? err.message : 'erreur inconnue'));
+    });
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -37,6 +75,7 @@ export async function shareOrDownload(
   mime: string,
   meta?: { title?: string; text?: string }
 ): Promise<boolean> {
+  if (isNative()) return shareNativeFile(blob, fileName, meta);
   if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
     try {
       const file = new File([blob], fileName, { type: mime });

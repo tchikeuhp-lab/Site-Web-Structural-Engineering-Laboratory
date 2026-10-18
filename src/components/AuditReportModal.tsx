@@ -6,6 +6,7 @@ import { downloadOrShareDxf } from '../utils/dxfExporter';
 import { downloadOrShareCsv } from '../utils/csvExporter';
 import { getPointGeodetic } from '../utils/projectGeo';
 import { toUtm } from '../utils/utm';
+import { printPage } from '../platform/nativePrint';
 
 interface AuditReportModalProps {
   isOpen: boolean;
@@ -56,7 +57,7 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({
   ) + (points.length >= 3 ? ' Z' : '');
 
   const handlePrint = () => {
-    window.print();
+    void printPage(`Fiche de relevé — ${project.title || 'Arpentis'}`);
   };
 
   return (

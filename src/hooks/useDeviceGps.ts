@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GpsSample } from '../types/survey';
 import { processGpsSamples } from '../utils/satelliteEngine';
+import {
+  gnssCheckPermission,
+  gnssGetCurrent,
+  gnssRequestPermission,
+  gnssSupported,
+  gnssWatch,
+  type GnssError,
+} from '../platform/gnss';
+import { isNative } from '../platform/platform';
 
 export type GpsPermissionState = 'prompt' | 'granted' | 'denied' | 'unknown';
 
@@ -14,14 +23,20 @@ export function useDeviceGps() {
   const [permissionState, setPermissionState] = useState<GpsPermissionState>('unknown');
   const [isSimulated, setIsSimulated] = useState(false);
 
-  const watchIdRef = useRef<number | null>(null);
+  const stopWatchRef = useRef<(() => void) | null>(null);
+  const startingRef = useRef(false);
   const simulationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Vérification de la disponibilité et de l'état de la permission via l'API Permissions
+  // Vérification de la disponibilité et de l'état de la permission
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    if (!gnssSupported()) {
       setIsSupported(false);
       setError('La géolocalisation GPS n’est pas supportée par cet appareil ou ce navigateur.');
+      return;
+    }
+
+    if (isNative()) {
+      void gnssCheckPermission().then((state) => setPermissionState(state));
       return;
     }
 
@@ -43,15 +58,7 @@ export function useDeviceGps() {
     }
   }, []);
 
-  const handlePosition = useCallback((pos: GeolocationPosition) => {
-    const newSample: GpsSample = {
-      lat: pos.coords.latitude,
-      lon: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
-      altitude: pos.coords.altitude,
-      timestamp: pos.timestamp,
-    };
-
+  const handlePosition = useCallback((newSample: GpsSample) => {
     setCurrentFix(newSample);
     setError(null);
     setPermissionState('granted');
@@ -67,19 +74,21 @@ export function useDeviceGps() {
     });
   }, []);
 
-  const handleError = useCallback((err: GeolocationPositionError) => {
+  const handleError = useCallback((err: GnssError) => {
     setIsAcquiring(false);
-    switch (err.code) {
-      case err.PERMISSION_DENIED:
+    switch (err.kind) {
+      case 'denied':
         setPermissionState('denied');
         setError(
-          'Accès au capteur GPS bloqué par le navigateur. Veuillez autoriser la localisation pour cette page.'
+          isNative()
+            ? 'Accès à la position refusé. Autorisez la localisation pour Arpentis dans les réglages d’Android (Applications → Arpentis → Autorisations).'
+            : 'Accès au capteur GPS bloqué par le navigateur. Veuillez autoriser la localisation pour cette page.'
         );
         break;
-      case err.POSITION_UNAVAILABLE:
-        setError('Signal satellite temporairement indisponible. Placez-vous sous un ciel dégagé.');
+      case 'unavailable':
+        setError('Signal satellite temporairement indisponible. Vérifiez que la localisation est activée et placez-vous sous un ciel dégagé.');
         break;
-      case err.TIMEOUT:
+      case 'timeout':
         setError('Délai d’attente satellite dépassé. Recherche active en cours...');
         break;
       default:
@@ -89,33 +98,31 @@ export function useDeviceGps() {
 
   // Démarre la surveillance continue
   const startTracking = useCallback(() => {
-    if (!navigator.geolocation) return;
-    if (watchIdRef.current !== null) return;
+    if (!gnssSupported()) return;
+    if (stopWatchRef.current || startingRef.current) return;
 
     setError(null);
     setIsTracking(true);
+    startingRef.current = true;
 
-    const options: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 1000,
-    };
-
-    try {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        handlePosition,
-        handleError,
-        options
-      );
-    } catch {
-      setError('Impossible d’initialiser le capteur GNSS.');
-      setIsTracking(false);
-    }
+    gnssWatch({ enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 }, handlePosition, handleError)
+      .then((stop) => {
+        // Si l'arrêt a été demandé pendant l'initialisation asynchrone, on referme aussitôt
+        if (!startingRef.current) stop();
+        else stopWatchRef.current = stop;
+      })
+      .catch(() => {
+        setError('Impossible d’initialiser le capteur GNSS.');
+        setIsTracking(false);
+      })
+      .finally(() => {
+        startingRef.current = false;
+      });
   }, [handlePosition, handleError]);
 
   // Déclenchement explicite sur geste utilisateur (User Activation Gesture)
   const requestPermissionAndStart = useCallback(async (): Promise<boolean> => {
-    if (!navigator.geolocation) {
+    if (!gnssSupported()) {
       setError('Géolocalisation non supportée.');
       return false;
     }
@@ -123,38 +130,37 @@ export function useDeviceGps() {
     setIsAcquiring(true);
     setError(null);
 
-    return new Promise((resolve) => {
-      // Niveau 1 : Tentative haute précision GNSS
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          handlePosition(pos);
-          startTracking();
-          resolve(true);
-        },
-        (err) => {
-          if (err.code === err.PERMISSION_DENIED) {
-            handleError(err);
-            resolve(false);
-            return;
-          }
+    if (isNative()) {
+      const state = await gnssRequestPermission();
+      if (state === 'denied') {
+        handleError({ kind: 'denied', message: '' });
+        return false;
+      }
+    }
 
-          // Niveau 2 : Repli avec précision standard si le GPS pur tarde
-          navigator.geolocation.getCurrentPosition(
-            (fallbackPos) => {
-              handlePosition(fallbackPos);
-              startTracking();
-              resolve(true);
-            },
-            (finalErr) => {
-              handleError(finalErr);
-              resolve(false);
-            },
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 5000 }
-          );
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 2000 }
-      );
-    });
+    try {
+      // Niveau 1 : haute précision GNSS
+      const fix = await gnssGetCurrent({ enableHighAccuracy: true, timeout: 8000, maximumAge: 2000 });
+      handlePosition(fix);
+      startTracking();
+      return true;
+    } catch (err) {
+      const e = err as GnssError;
+      if (e.kind === 'denied') {
+        handleError(e);
+        return false;
+      }
+      try {
+        // Niveau 2 : repli avec précision standard si le GPS pur tarde
+        const fix = await gnssGetCurrent({ enableHighAccuracy: false, timeout: 10000, maximumAge: 5000 });
+        handlePosition(fix);
+        startTracking();
+        return true;
+      } catch (finalErr) {
+        handleError(finalErr as GnssError);
+        return false;
+      }
+    }
   }, [handlePosition, handleError, startTracking]);
 
   // Simulation GNSS pour environnement de test ou zone sans capteur GPS
@@ -198,9 +204,10 @@ export function useDeviceGps() {
   }, []);
 
   const stopTracking = useCallback(() => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
+    startingRef.current = false;
+    if (stopWatchRef.current) {
+      stopWatchRef.current();
+      stopWatchRef.current = null;
     }
     if (simulationIntervalRef.current) {
       clearInterval(simulationIntervalRef.current);
@@ -221,9 +228,9 @@ export function useDeviceGps() {
   // Nettoyage au démontage
   useEffect(() => {
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
+      startingRef.current = false;
+      stopWatchRef.current?.();
+      stopWatchRef.current = null;
       if (simulationIntervalRef.current) {
         clearInterval(simulationIntervalRef.current);
       }

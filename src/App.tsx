@@ -10,6 +10,8 @@ import {
   withMetric,
 } from './utils/projectGeo';
 import { safeFileName, triggerDownload } from './utils/download';
+import { initNative } from './platform/nativeInit';
+import { isNative } from './platform/platform';
 import { useDeviceGps } from './hooks/useDeviceGps';
 import { useProjectHistory } from './state/useProjectHistory';
 import {
@@ -154,6 +156,31 @@ function SurveyApp({ initial }: { initial: Workspace }) {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isTrianglesModalOpen, setIsTrianglesModalOpen] = useState(false);
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
+
+  // Android : le bouton « retour » ferme d'abord les fenêtres ouvertes, puis revient au canevas
+  const backState = useRef({ isGpsModalOpen, isPdfModalOpen, isTrianglesModalOpen, isProjectsOpen, activeTab });
+  backState.current = { isGpsModalOpen, isPdfModalOpen, isTrianglesModalOpen, isProjectsOpen, activeTab };
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let disposed = false;
+    void initNative(() => {
+      const st = backState.current;
+      if (st.isPdfModalOpen) setIsPdfModalOpen(false);
+      else if (st.isTrianglesModalOpen) setIsTrianglesModalOpen(false);
+      else if (st.isGpsModalOpen) setIsGpsModalOpen(false);
+      else if (st.isProjectsOpen) setIsProjectsOpen(false);
+      else if (st.activeTab !== 'canvas') setActiveTab('canvas');
+      else return false;
+      return true;
+    }).then((c) => {
+      if (disposed) c();
+      else cleanup = c;
+    });
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, []);
 
   // Raccourcis clavier : annuler / rétablir (hors champs de saisie)
   useEffect(() => {
@@ -553,7 +580,7 @@ function SurveyApp({ initial }: { initial: Workspace }) {
       />
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
-      <PwaStatus />
+      {!isNative() && <PwaStatus />}
     </div>
   );
 }

@@ -32,7 +32,10 @@ const cspPlugin = (): Plugin => ({
   },
 });
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Build pour le conteneur Android (Capacitor) : ressources embarquées dans l'APK, donc ni service worker ni CSP meta
+  const isAndroid = mode === 'android';
+  return {
   // Chemins relatifs : l'application se déploie à la racine d'un domaine comme dans un sous-dossier.
   // Pour imposer une base absolue : BASE_PATH=/arpentis/ npm run build
   base: process.env.BASE_PATH ?? './',
@@ -42,8 +45,9 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    cspPlugin(),
+    ...(isAndroid ? [] : [cspPlugin()]),
     VitePWA({
+      disable: isAndroid,
       registerType: 'prompt', // jamais de rechargement imposé en plein relevé : l'utilisateur choisit
       includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'],
       manifest: {
@@ -76,4 +80,5 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     environment: 'node',
   },
+};
 });
