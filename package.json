@@ -1,7 +1,7 @@
 {
   "name": "arpentis",
   "private": true,
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Arpentis — calcul de superficies et métré de parcelles, application web autonome (PWA hors ligne)",
   "type": "module",
   "engines": {

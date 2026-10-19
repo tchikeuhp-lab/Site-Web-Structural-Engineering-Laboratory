@@ -39,7 +39,7 @@ export const GpsAveragingModal: React.FC<GpsAveragingModalProps> = ({
   onConfirmPoint,
   defaultPointName = 'Borne GNSS',
 }) => {
-  const targetSamples = 20;
+  const targetSamples = 30;
 
   const {
     isSupported,

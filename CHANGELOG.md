@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.2
+
+- GNSS : moyennage sur 30 mesures de position au lieu de 20 (fenêtre glissante, compteur « n / 30 »).
+
 ## 2.2.1
 
 - Identité visuelle SEL : logo sur les icônes (web et Android), l'écran de démarrage et l'en-tête de la fiche de relevé.

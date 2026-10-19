@@ -197,7 +197,7 @@ export function useDeviceGps(maxSamples = 30) {
         return next.length > maxSamples ? next.slice(next.length - maxSamples) : next;
       });
 
-      if (count >= 20 && simulationIntervalRef.current) {
+      if (count >= 30 && simulationIntervalRef.current) {
         clearInterval(simulationIntervalRef.current);
         simulationIntervalRef.current = null;
       }
