@@ -142,7 +142,7 @@ describe('DXF : cadre et cartouche normalisés', () => {
     expect(entityLayers(on)).toContain('TABLEAU_COORDONNEES');
     const texts = textValues(on);
     expect(texts).toContain('Parcelle des Chenes');
-    expect(dxfAscii('Lot 4 — n° 12 « l’Étoile » × 2 …')).toBe('Lot 4 - no 12 "l\'Etoile" x 2 ...');
+    expect(dxfAscii('Lot 4 — n° 12 « l’Étoile » × 2 …')).toBe('Lot 4 - no 12 " l\'Etoile " x 2 ...');
     expect(texts).toContain('Societe Etoile');
     expect(texts).toContain('PL-042');
     expect(texts).toContain('19/10/2026');

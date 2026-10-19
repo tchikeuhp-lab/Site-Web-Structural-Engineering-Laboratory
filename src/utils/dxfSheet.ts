@@ -10,8 +10,16 @@
 /** Le format DXF R12 est ASCII : translittération des accents et symboles. */
 export const dxfAscii = (v: string): string =>
   v
+    .replace(/\u00B0/g, 'o') // degré : « n° » -> « no »
+    .replace(/[\u2010-\u2015\u2212]/g, '-') // tirets
+    .replace(/[\u2018\u2019\u201A]/g, "'")
+    .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/\u00D7/g, 'x')
+    .replace(/\u0153/g, 'oe')
+    .replace(/\u0152/g, 'OE')
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036F]/g, '') // accents
     .replace(/[^\x20-\x7E]/g, '?');
 
 export type SheetFormatName = 'A4' | 'A3' | 'A2' | 'A1' | 'A0';
