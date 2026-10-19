@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.2
+
+- Correction : le DXF 2.3.1 pouvait être refusé à l'ouverture (« press OK to continue »). Suppression des données étendues (XDATA) du style de texte, ajout du style STANDARD, groupe de style placé après le calque. Fichier relu en mode strict sans erreur.
+
 ## 2.3.1
 
 - Export DXF : tous les textes (dessin, cartouche, tableau) utilisent la police Arial Narrow (style `ARIAL_NARROW`, fichier `arialn.ttf`).

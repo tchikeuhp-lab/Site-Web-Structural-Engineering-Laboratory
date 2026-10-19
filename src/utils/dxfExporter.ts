@@ -92,14 +92,17 @@ export function generateDxfContent(
 
   const ascii = dxfAscii;
 
+  let styleNext = false;
   const add = (groupCode: number | string, val: number | string) => {
     lines.push(groupCode.toString());
     // Groupes 1 (texte), 2 et 8 (noms) : contenu textuel
     lines.push(groupCode === 1 ? ascii(val.toString()) : val.toString());
-    // Tous les textes du dessin utilisent le style Arial Narrow
-    if (groupCode === 0 && val === 'TEXT') {
+    // Tous les textes du dessin utilisent le style Arial Narrow (groupe 7, placé juste après le calque)
+    if (groupCode === 0) styleNext = val === 'TEXT';
+    else if (groupCode === 8 && styleNext) {
       lines.push('7');
       lines.push(TEXT_STYLE);
+      styleNext = false;
     }
   };
 
@@ -119,23 +122,21 @@ export function generateDxfContent(
   // 2. SECTION TABLES (Layers)
   add(0, 'SECTION');
   add(2, 'TABLES');
-  // Style de texte : police TrueType Arial Narrow (fichier arialn.ttf ; la famille est aussi déclarée en XDATA pour AutoCAD)
+  // Styles de texte : STANDARD (défaut) et ARIAL_NARROW (police TrueType Arial Narrow, fichier arialn.ttf)
   add(0, 'TABLE');
   add(2, 'STYLE');
-  add(70, 1);
-  add(0, 'STYLE');
-  add(2, TEXT_STYLE);
-  add(70, 0);
-  add(40, 0); // hauteur fixe : 0 = libre
-  add(41, 1); // facteur de largeur
-  add(50, 0); // angle d'obliquité
-  add(71, 0);
-  add(42, 2.5);
-  add(3, 'arialn.ttf');
-  add(4, '');
-  add(1001, 'ACAD');
-  add(1000, 'Arial Narrow');
-  add(1071, 0);
+  add(70, 2);
+  for (const [name, font] of [['STANDARD', 'txt'], [TEXT_STYLE, 'arialn.ttf']] as const) {
+    add(0, 'STYLE');
+    add(2, name);
+    add(70, 0);
+    add(40, 0); // hauteur fixe : 0 = libre
+    add(41, 1); // facteur de largeur
+    add(50, 0); // angle d'obliquité
+    add(71, 0);
+    add(42, 0.2);
+    add(3, font);
+  }
   add(0, 'ENDTAB');
 
   add(0, 'TABLE');

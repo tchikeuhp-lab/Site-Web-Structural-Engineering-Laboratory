@@ -159,14 +159,15 @@ describe('DXF : cadre et cartouche normalisés', () => {
     const l = dxf.split('\n');
     expect(l).toContain('ARIAL_NARROW');
     expect(l[l.indexOf('arialn.ttf') - 1]).toBe('3');
-    expect(l).toContain('Arial Narrow');
+    expect(l).not.toContain('1001'); // pas de XDATA (APPID non déclaré = fichier rejeté par AutoCAD)
     // chaque TEXT porte le style
     let texts = 0;
     for (let i = 0; i < l.length; i++) {
       if (l[i] === 'TEXT' && l[i - 1] === '0') {
         texts++;
-        expect(l[i + 1]).toBe('7');
-        expect(l[i + 2]).toBe('ARIAL_NARROW');
+        expect(l[i + 1]).toBe('8');
+        expect(l[i + 3]).toBe('7');
+        expect(l[i + 4]).toBe('ARIAL_NARROW');
       }
     }
     expect(texts).toBeGreaterThan(30);
