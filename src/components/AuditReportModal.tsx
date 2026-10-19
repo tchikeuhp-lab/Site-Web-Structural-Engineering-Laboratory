@@ -7,6 +7,7 @@ import { downloadOrShareCsv } from '../utils/csvExporter';
 import { getPointGeodetic } from '../utils/projectGeo';
 import { toUtm } from '../utils/utm';
 import { printPage } from '../platform/nativePrint';
+import { SelLogo } from './SelLogo';
 
 interface AuditReportModalProps {
   isOpen: boolean;
@@ -61,8 +62,8 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="print-area relative w-full max-w-3xl rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-2xl overflow-hidden my-4">
+    <div className="fixed inset-0 z-50 flex justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="print-area relative w-full max-w-3xl rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-2xl overflow-hidden my-auto">
         {/* Barre d'action supérieure (non imprimée) */}
         <div className="print:hidden flex items-center justify-between border-b border-slate-200 bg-slate-100 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -91,6 +92,7 @@ export const AuditReportModal: React.FC<AuditReportModalProps> = ({
         <div className="p-6 sm:p-8 space-y-6 print:p-0 print:space-y-4">
           {/* Cartouche d'en-tête technique */}
           <div className="border-2 border-slate-900 p-4 rounded-lg">
+            <SelLogo isPrint className="mb-3 text-slate-900" />
             <div className="flex justify-between items-start border-b border-slate-300 pb-3 mb-3">
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">

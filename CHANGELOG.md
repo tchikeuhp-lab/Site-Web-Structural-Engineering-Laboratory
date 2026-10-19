@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1
+
+- Identité visuelle SEL : logo sur les icônes (web et Android), l'écran de démarrage et l'en-tête de la fiche de relevé.
+- GNSS : fenêtre de 20 mesures, compteur « mesures de position » (fin du 30/20).
+- Signature de release avec une clé SEL dédiée (secrets GitHub).
+
 ## 2.2.0 — Application Android
 
 - Conteneur Android (Capacitor 8) : identifiant `com.structuralengineeringlabs.arpentis`, APK/AAB compilés par GitHub Actions (`.github/workflows/android.yml`).
