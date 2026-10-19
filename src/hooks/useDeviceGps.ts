@@ -13,7 +13,8 @@ import { isNative } from '../platform/platform';
 
 export type GpsPermissionState = 'prompt' | 'granted' | 'denied' | 'unknown';
 
-export function useDeviceGps() {
+/** maxSamples : taille de la fenêtre glissante de mesures conservées pour le moyennage. */
+export function useDeviceGps(maxSamples = 30) {
   const [isSupported, setIsSupported] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
   const [isAcquiring, setIsAcquiring] = useState(false);
@@ -67,12 +68,12 @@ export function useDeviceGps() {
 
     setSamples((prev) => {
       const updated = [...prev, newSample];
-      if (updated.length > 30) {
-        return updated.slice(updated.length - 30);
+      if (updated.length > maxSamples) {
+        return updated.slice(updated.length - maxSamples);
       }
       return updated;
     });
-  }, []);
+  }, [maxSamples]);
 
   const handleError = useCallback((err: GnssError) => {
     setIsAcquiring(false);
@@ -193,7 +194,7 @@ export function useDeviceGps() {
       setCurrentFix(simSample);
       setSamples((prev) => {
         const next = [...prev, simSample];
-        return next.length > 30 ? next.slice(next.length - 30) : next;
+        return next.length > maxSamples ? next.slice(next.length - maxSamples) : next;
       });
 
       if (count >= 20 && simulationIntervalRef.current) {
@@ -201,7 +202,7 @@ export function useDeviceGps() {
         simulationIntervalRef.current = null;
       }
     }, 400); // 1 échantillon toutes les 400ms
-  }, []);
+  }, [maxSamples]);
 
   const stopTracking = useCallback(() => {
     startingRef.current = false;

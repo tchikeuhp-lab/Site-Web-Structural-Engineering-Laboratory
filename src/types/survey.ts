@@ -11,7 +11,7 @@ export interface Point2D {
   lon?: number; // Longitude en degrés décimaux
   altitude?: number; // Altitude en mètres
   gpsAccuracy?: number; // Précision horizontale annoncée en mètres (ex: ±1.8m)
-  fixCount?: number; // Nombre d'échantillons satellites moyennés
+  fixCount?: number; // Nombre de mesures de position moyennées
   timestamp?: number;
   source?: PointSource;
 }

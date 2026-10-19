@@ -39,6 +39,8 @@ export const GpsAveragingModal: React.FC<GpsAveragingModalProps> = ({
   onConfirmPoint,
   defaultPointName = 'Borne GNSS',
 }) => {
+  const targetSamples = 20;
+
   const {
     isSupported,
     isTracking,
@@ -55,7 +57,7 @@ export const GpsAveragingModal: React.FC<GpsAveragingModalProps> = ({
     stopTracking,
     resetSamples,
     clearError,
-  } = useDeviceGps();
+  } = useDeviceGps(targetSamples);
 
   const [pointName, setPointName] = useState(defaultPointName);
   const [showHelpGuide, setShowHelpGuide] = useState(false);
@@ -66,7 +68,6 @@ export const GpsAveragingModal: React.FC<GpsAveragingModalProps> = ({
   const [manualLon, setManualLon] = useState<string>('');
   const [manualAlt, setManualAlt] = useState<string>('0');
 
-  const targetSamples = 20;
 
   // La simulation GNSS n'existe qu'en développement : jamais dans l'application déployée
   const simulationEnabled = import.meta.env.DEV;
@@ -363,7 +364,7 @@ export const GpsAveragingModal: React.FC<GpsAveragingModalProps> = ({
                 {/* Jauge de progression du moyennage */}
                 <div>
                   <div className="flex justify-between text-[11px] font-mono text-slate-400 mb-1">
-                    <span>Échantillons satellites intégrés :</span>
+                    <span>Mesures de position intégrées :</span>
                     <span className="font-bold text-cyan-400">
                       {sampleCount} / {targetSamples}
                     </span>
