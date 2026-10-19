@@ -22,6 +22,9 @@ export const dxfAscii = (v: string): string =>
     .replace(/[\u0300-\u036F]/g, '') // accents
     .replace(/[^\x20-\x7E]/g, '?');
 
+/** Style de texte du dessin : Arial Narrow (arialn.ttf). */
+export const TEXT_STYLE = 'ARIAL_NARROW';
+
 export type SheetFormatName = 'A4' | 'A3' | 'A2' | 'A1' | 'A0';
 
 export interface SheetFormat {
@@ -170,13 +173,13 @@ function niceLength(maxMeters: number): number {
 }
 
 /** Estimation prudente de la largeur d'un texte (police STANDARD). */
-const textWidth = (s: string, h: number) => s.length * h * 0.65;
+const textWidth = (s: string, h: number) => s.length * h * 0.5;
 
 function fitText(s: string, cellW: number, h: number, minH: number): { s: string; h: number } {
   let hh = h;
   while (hh > minH && textWidth(s, hh) > cellW) hh = Math.max(minH, +(hh - 0.5).toFixed(2));
   if (textWidth(s, hh) <= cellW) return { s, h: hh };
-  const maxChars = Math.max(1, Math.floor(cellW / (hh * 0.65)) - 2);
+  const maxChars = Math.max(1, Math.floor(cellW / (hh * 0.5)) - 2);
   return { s: s.slice(0, maxChars) + '..', h: hh };
 }
 

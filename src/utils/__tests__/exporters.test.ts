@@ -153,6 +153,27 @@ describe('DXF : cadre et cartouche normalisés', () => {
     expect(vertices(off)).toEqual(vertices(on));
   });
 
+  it('tous les textes utilisent le style Arial Narrow (arialn.ttf)', () => {
+    const p = project(false);
+    const dxf = generateDxfContent(p, computeSurveyMetrics(p.points));
+    const l = dxf.split('\n');
+    expect(l).toContain('ARIAL_NARROW');
+    expect(l[l.indexOf('arialn.ttf') - 1]).toBe('3');
+    expect(l).toContain('Arial Narrow');
+    // chaque TEXT porte le style
+    let texts = 0;
+    for (let i = 0; i < l.length; i++) {
+      if (l[i] === 'TEXT' && l[i - 1] === '0') {
+        texts++;
+        expect(l[i + 1]).toBe('7');
+        expect(l[i + 2]).toBe('ARIAL_NARROW');
+      }
+    }
+    expect(texts).toBeGreaterThan(30);
+    const legacy = generateDxfContent(p, computeSurveyMetrics(p.points), { titleBlock: false }).split('\n');
+    expect(legacy).toContain('ARIAL_NARROW');
+  });
+
   it('nombre de calques déclaré = calques définis', () => {
     const p = project(false);
     const dxf = generateDxfContent(p, computeSurveyMetrics(p.points));

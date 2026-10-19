@@ -3,7 +3,7 @@ import { calculateBearing, calculateCentroid, formatAgrarian } from './geometryE
 import { safeFileName, shareOrDownload } from './download';
 import { getPointGeodetic } from './projectGeo';
 import { toUtm, utmZoneFromLon } from './utm';
-import { chooseLayout, dxfAscii, emitSheet, SHEET_LAYERS, type SheetFormatName } from './dxfSheet';
+import { chooseLayout, dxfAscii, emitSheet, SHEET_LAYERS, TEXT_STYLE, type SheetFormatName } from './dxfSheet';
 
 export interface DxfOptions {
   /**
@@ -96,6 +96,11 @@ export function generateDxfContent(
     lines.push(groupCode.toString());
     // Groupes 1 (texte), 2 et 8 (noms) : contenu textuel
     lines.push(groupCode === 1 ? ascii(val.toString()) : val.toString());
+    // Tous les textes du dessin utilisent le style Arial Narrow
+    if (groupCode === 0 && val === 'TEXT') {
+      lines.push('7');
+      lines.push(TEXT_STYLE);
+    }
   };
 
   if (utmMode) {
@@ -114,6 +119,25 @@ export function generateDxfContent(
   // 2. SECTION TABLES (Layers)
   add(0, 'SECTION');
   add(2, 'TABLES');
+  // Style de texte : police TrueType Arial Narrow (fichier arialn.ttf ; la famille est aussi déclarée en XDATA pour AutoCAD)
+  add(0, 'TABLE');
+  add(2, 'STYLE');
+  add(70, 1);
+  add(0, 'STYLE');
+  add(2, TEXT_STYLE);
+  add(70, 0);
+  add(40, 0); // hauteur fixe : 0 = libre
+  add(41, 1); // facteur de largeur
+  add(50, 0); // angle d'obliquité
+  add(71, 0);
+  add(42, 2.5);
+  add(3, 'arialn.ttf');
+  add(4, '');
+  add(1001, 'ACAD');
+  add(1000, 'Arial Narrow');
+  add(1071, 0);
+  add(0, 'ENDTAB');
+
   add(0, 'TABLE');
   add(2, 'LAYER');
   add(70, 4 + (withSheet ? SHEET_LAYERS.length : 0));

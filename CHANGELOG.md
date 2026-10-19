@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.1
+
+- Export DXF : tous les textes (dessin, cartouche, tableau) utilisent la police Arial Narrow (style `ARIAL_NARROW`, fichier `arialn.ttf`).
+
 ## 2.3.0 — Cartouche DXF normalisé
 
 - Export DXF : cadre de feuille (ISO 5457) avec repères de centrage et de zones, cartouche ISO 7200 (logo SEL, titre, maître d'ouvrage, localisation, n° de plan, référence cadastrale, superficie, système de coordonnées, dessiné/vérifié par, date, échelle, format, indice, feuille).
