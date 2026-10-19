@@ -3,6 +3,7 @@ import { calculateBearing, calculateCentroid, formatAgrarian } from './geometryE
 import { safeFileName, shareOrDownload } from './download';
 import { getPointGeodetic } from './projectGeo';
 import { toUtm, utmZoneFromLon } from './utm';
+import { chooseLayout, dxfAscii, emitSheet, SHEET_LAYERS, type SheetFormatName } from './dxfSheet';
 
 export interface DxfOptions {
   /**
@@ -10,6 +11,12 @@ export interface DxfOptions {
    * 'utm'   : coordonnées WGS 84 / UTM (X = Est, Y = Nord, en mètres), pour superposer le plan à un fond SIG ou cadastral.
    */
   coordinates?: 'local' | 'utm';
+  /** Cadre de feuille ISO 5457 + cartouche ISO 7200 + tableau des coordonnées (activé par défaut). */
+  titleBlock?: boolean;
+  /** Format de feuille et échelle (automatiques par défaut : plus petit format lisible, échelle normalisée). */
+  sheet?: { format?: SheetFormatName | 'auto'; scale?: number | 'auto' };
+  /** Date affichée dans le cartouche (par défaut : aujourd'hui). */
+  date?: Date;
 }
 
 export class DxfUtmUnavailableError extends Error {
@@ -62,14 +69,28 @@ export function generateDxfContent(
   });
   const centroid = utmMode ? calculateCentroid(points) : metrics.centroid;
 
+  // Mise en page de la feuille (format et échelle) : calculée sur l'emprise des bornes
+  const withSheet = options.titleBlock !== false && n >= 1;
+  const layout = withSheet
+    ? chooseLayout(
+        {
+          minX: Math.min(...points.map((p) => p.x)),
+          maxX: Math.max(...points.map((p) => p.x)),
+          minY: Math.min(...points.map((p) => p.y)),
+          maxY: Math.max(...points.map((p) => p.y)),
+        },
+        options.sheet
+      )
+    : null;
+  // Hauteurs de texte : valeurs historiques (m) sans cartouche ; hauteurs normalisées ISO 3098 (mm papier × échelle) avec cartouche
+  const mm = layout ? layout.k : 0;
+  const th = layout
+    ? { borne: 2.5 * mm, off: 1.5 * mm, cote: 2.5 * mm, aire: 3.5 * mm, mid: 2.5 * mm, small: 2.5 * mm, gap1: 5 * mm, gap2: 8.5 * mm }
+    : { borne: 0.8, off: 0.5, cote: 0.7, aire: 1.2, mid: 0.9, small: 0.7, gap1: 1.5, gap2: 2.7 };
+
   const lines: string[] = [];
 
-  // DXF R12 est un format ASCII : on translittère les accents et symboles (m² -> m2)
-  const ascii = (v: string) =>
-    v
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\x20-\x7E]/g, '?');
+  const ascii = dxfAscii;
 
   const add = (groupCode: number | string, val: number | string) => {
     lines.push(groupCode.toString());
@@ -95,7 +116,7 @@ export function generateDxfContent(
   add(2, 'TABLES');
   add(0, 'TABLE');
   add(2, 'LAYER');
-  add(70, 4);
+  add(70, 4 + (withSheet ? SHEET_LAYERS.length : 0));
 
   // Layer 1: LIMITES_PARCELLE (Vert - color 3)
   add(0, 'LAYER');
@@ -124,6 +145,16 @@ export function generateDxfContent(
   add(70, 0);
   add(62, 6); // Magenta
   add(6, 'CONTINUOUS');
+
+  if (withSheet) {
+    for (const l of SHEET_LAYERS) {
+      add(0, 'LAYER');
+      add(2, l.name);
+      add(70, 0);
+      add(62, l.color);
+      add(6, 'CONTINUOUS');
+    }
+  }
 
   add(0, 'ENDTAB');
   add(0, 'ENDSEC');
@@ -161,10 +192,10 @@ export function generateDxfContent(
       // Texte du nom de la borne
       add(0, 'TEXT');
       add(8, 'BORNES_SOMMETS');
-      add(10, (p.x + 0.5).toFixed(4));
-      add(20, (p.y + 0.5).toFixed(4));
+      add(10, (p.x + th.off).toFixed(4));
+      add(20, (p.y + th.off).toFixed(4));
       add(30, 0.0);
-      add(40, 0.8); // Hauteur du texte en mètres
+      add(40, th.borne.toFixed(4)); // Hauteur du texte en mètres
       add(1, utmMode ? `${p.name} (E:${p.x.toFixed(2)}, N:${p.y.toFixed(2)})` : `${p.name} (X:${p.x.toFixed(2)}, Y:${p.y.toFixed(2)})`);
     }
 
@@ -175,7 +206,7 @@ export function generateDxfContent(
       add(10, edge.midpoint.x.toFixed(4));
       add(20, edge.midpoint.y.toFixed(4));
       add(30, 0.0);
-      add(40, 0.7); // Hauteur
+      add(40, th.cote.toFixed(4)); // Hauteur
       add(50, edge.angleDeg.toFixed(1)); // Rotation du texte le long du segment
       add(1, `${edge.length.toFixed(2)} m`);
     }
@@ -191,25 +222,51 @@ export function generateDxfContent(
       add(10, cx.toFixed(4));
       add(20, cy.toFixed(4));
       add(30, 0.0);
-      add(40, 1.2); // Taille marquée
+      add(40, th.aire.toFixed(4)); // Taille marquée
       add(1, `AIRE : ${metrics.areaM2.toFixed(2)} m²`);
 
       add(0, 'TEXT');
       add(8, 'SURFACE_TEXTE');
       add(10, cx.toFixed(4));
-      add(20, (cy - 1.5).toFixed(4));
+      add(20, (cy - th.gap1).toFixed(4));
       add(30, 0.0);
-      add(40, 0.9);
+      add(40, th.mid.toFixed(4));
       add(1, `AGRAIRE : ${agrarian.formattedString}`);
 
       add(0, 'TEXT');
       add(8, 'SURFACE_TEXTE');
       add(10, cx.toFixed(4));
-      add(20, (cy - 2.7).toFixed(4));
+      add(20, (cy - th.gap2).toFixed(4));
       add(30, 0.0);
-      add(40, 0.7);
+      add(40, th.small.toFixed(4));
       add(1, `PERIMETRE : ${metrics.perimeterM.toFixed(2)} m`);
     }
+  }
+
+  if (layout) {
+    const area = metrics.areaM2;
+    const d = options.date ?? new Date();
+    const dd = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    emitSheet((c, v) => add(c, v), layout, {
+      title: project.title,
+      client: project.client ?? '',
+      location: project.location ?? '',
+      planNumber: project.planNumber ?? '',
+      cadastralRef: project.referenceCadastrale,
+      areaText: area > 0 ? `${area.toFixed(2)} m2  (${formatAgrarian(area).formattedString})` : '',
+      systemText: utmMode
+        ? `WGS 84 / UTM ${zoneLabel} (EPSG:${epsg})`
+        : project.originGeodetic
+          ? 'Plan tangent local (WGS 84)'
+          : 'Repere local (non georeference)',
+      drawnBy: project.operatorName,
+      checkedBy: project.checkedBy ?? '',
+      date: dd,
+      revision: project.revision || 'A',
+      appVersion: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '',
+      coordHeaders: utmMode ? ['E (m)', 'N (m)'] : ['X (m)', 'Y (m)'],
+      points: points.map((p) => ({ name: p.name, x: p.x, y: p.y })),
+    });
   }
 
   add(0, 'ENDSEC');

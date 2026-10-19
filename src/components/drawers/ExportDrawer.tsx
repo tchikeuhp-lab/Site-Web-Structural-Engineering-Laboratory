@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuditProject, CalculationResult } from '../../types/survey';
 import { downloadOrShareDxf, DxfUtmUnavailableError } from '../../utils/dxfExporter';
+import { SHEET_FORMATS, STANDARD_SCALES, type SheetFormatName } from '../../utils/dxfSheet';
 import { downloadOrShareCsv } from '../../utils/csvExporter';
 import { downloadOrShareGeoJson } from '../../utils/geojsonExporter';
 import { downloadOrShareKml } from '../../utils/kmlExporter';
@@ -28,6 +29,9 @@ export const ExportDrawer: React.FC<ExportDrawerProps> = ({
   onOpenPdfReport,
 }) => {
   const [dxfUtm, setDxfUtm] = useState(false);
+  const [dxfSheetOn, setDxfSheetOn] = useState(true);
+  const [dxfFormat, setDxfFormat] = useState<SheetFormatName | 'auto'>('auto');
+  const [dxfScale, setDxfScale] = useState<number | 'auto'>('auto');
   const [exportFeedback, setExportFeedback] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (!isOpen) return null;
@@ -53,7 +57,11 @@ export const ExportDrawer: React.FC<ExportDrawerProps> = ({
   };
 
   const handleExportDxf = () =>
-    run('DXF', () => downloadOrShareDxf(project, metrics, { coordinates: dxfUtm && georeferenced ? 'utm' : 'local' }));
+    run('DXF', () => downloadOrShareDxf(project, metrics, {
+      coordinates: dxfUtm && georeferenced ? 'utm' : 'local',
+      titleBlock: dxfSheetOn,
+      sheet: { format: dxfFormat, scale: dxfScale },
+    }));
   const handleExportCsv = () => run('CSV', () => downloadOrShareCsv(project, metrics));
   const handleExportGeoJson = () => run('GeoJSON', () => downloadOrShareGeoJson(project, metrics));
   const handleExportKml = () => run('KML', () => downloadOrShareKml(project, metrics));
@@ -129,6 +137,32 @@ export const ExportDrawer: React.FC<ExportDrawerProps> = ({
                   onChange={(e) => onUpdateProjectMeta({ operatorName: e.target.value })}
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
                 />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-700/50 pt-2">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">Cartouche du plan (export DXF)</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="col-span-2">
+                  <label className="text-[11px] text-slate-400 block mb-0.5">Maître d’ouvrage / Propriétaire</label>
+                  <input type="text" placeholder="Ex: Société Étoile SARL" value={project.client ?? ''} onChange={(e) => onUpdateProjectMeta({ client: e.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[11px] text-slate-400 block mb-0.5">Localisation</label>
+                  <input type="text" placeholder="Ex: Yaoundé, Mfou, lieu-dit Nkolbisson" value={project.location ?? ''} onChange={(e) => onUpdateProjectMeta({ location: e.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-0.5">N° de plan</label>
+                  <input type="text" placeholder="Ex: PL-2026-042" value={project.planNumber ?? ''} onChange={(e) => onUpdateProjectMeta({ planNumber: e.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-0.5">Indice de révision</label>
+                  <input type="text" placeholder="Ex: A" maxLength={4} value={project.revision ?? ''} onChange={(e) => onUpdateProjectMeta({ revision: e.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[11px] text-slate-400 block mb-0.5">Vérifié par</label>
+                  <input type="text" placeholder="Ex: M. Kamga" value={project.checkedBy ?? ''} onChange={(e) => onUpdateProjectMeta({ checkedBy: e.target.value })} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500" />
+                </div>
               </div>
             </div>
 
@@ -248,6 +282,46 @@ export const ExportDrawer: React.FC<ExportDrawerProps> = ({
                 à un fond SIG ou cadastral
               </span>
             </label>
+
+            <label className="flex items-start gap-2 px-1 text-[11px] text-slate-300">
+              <input
+                type="checkbox"
+                checked={dxfSheetOn}
+                onChange={(e) => setDxfSheetOn(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 accent-blue-500"
+              />
+              <span>Cadre de feuille et cartouche normalisés (ISO 5457 / ISO 7200), tableau des coordonnées, nord et échelle graphique</span>
+            </label>
+            {dxfSheetOn && (
+              <div className="grid grid-cols-2 gap-2 px-1">
+                <label className="text-[11px] text-slate-400">
+                  Format
+                  <select
+                    value={dxfFormat}
+                    onChange={(e) => setDxfFormat(e.target.value as SheetFormatName | 'auto')}
+                    className="mt-0.5 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-white"
+                  >
+                    <option value="auto">Automatique</option>
+                    {SHEET_FORMATS.map((f) => (
+                      <option key={f.name} value={f.name}>{f.name} paysage</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-[11px] text-slate-400">
+                  Échelle
+                  <select
+                    value={String(dxfScale)}
+                    onChange={(e) => setDxfScale(e.target.value === 'auto' ? 'auto' : Number(e.target.value))}
+                    className="mt-0.5 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-white"
+                  >
+                    <option value="auto">Automatique</option>
+                    {STANDARD_SCALES.filter((d) => d >= 10 && d <= 10000).map((d) => (
+                      <option key={d} value={d}>1:{d}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
 
             {/* Export 4 : Rapport d'Audit PDF Imprimable */}
             <button

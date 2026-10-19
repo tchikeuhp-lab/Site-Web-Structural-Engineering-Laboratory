@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.0 — Cartouche DXF normalisé
+
+- Export DXF : cadre de feuille (ISO 5457) avec repères de centrage et de zones, cartouche ISO 7200 (logo SEL, titre, maître d'ouvrage, localisation, n° de plan, référence cadastrale, superficie, système de coordonnées, dessiné/vérifié par, date, échelle, format, indice, feuille).
+- Choix automatique du plus petit format A4 à A0 et d'une échelle normalisée ; format et échelle modifiables. La feuille est tracée à l'échelle autour du dessin : coordonnées inchangées (UTM exploitables), impression 1:1 depuis le modèle.
+- Textes aux hauteurs normalisées (ISO 3098), tableau des coordonnées des bornes, flèche nord, échelle graphique, calques dédiés.
+- Nouveaux champs du relevé (facultatifs, conservés avec le projet) : maître d'ouvrage, localisation, n° de plan, vérifié par, indice de révision.
+
 ## 2.2.2
 
 - GNSS : moyennage sur 30 mesures de position au lieu de 20 (fenêtre glissante, compteur « n / 30 »).

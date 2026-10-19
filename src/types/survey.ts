@@ -48,6 +48,12 @@ export interface AuditProject {
   title: string;
   referenceCadastrale: string;
   operatorName: string;
+  // Informations du cartouche (export DXF) — facultatives
+  client?: string; // maître d'ouvrage / propriétaire
+  location?: string; // localisation (lieu-dit, arrondissement…)
+  planNumber?: string;
+  checkedBy?: string;
+  revision?: string; // indice de révision
   notes: string;
   createdAt: string;
   updatedAt: string;
